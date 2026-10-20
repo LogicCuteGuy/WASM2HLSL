@@ -1,0 +1,21 @@
+{
+  "name": "LogicCuteGuy.Wasm2Hlsl.Editor",
+  "rootNamespace": "LogicCuteGuy.Wasm2Hlsl",
+  "references": [
+    "LogicCuteGuy.Wasm2Hlsl.Runtime",
+    "UdonSharp.Editor",
+    "VRC.Udon.Editor",
+    "GUID:99835874ee819da44948776e0df4ff1d",
+    "GUID:3c1bc1267eab5884ebe7f232c09ee0d9",
+    "GUID:3456780c4fb2d324ab9c633d6f1b0ddb"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

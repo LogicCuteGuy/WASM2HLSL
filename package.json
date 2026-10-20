@@ -1,0 +1,24 @@
+{
+  "name": "com.logiccuteguy.wasm2hlsl",
+  "displayName": "WASM2HLSL for LCGUdonSharp",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "license": "MIT",
+  "description": "Converts WebAssembly modules into HLSL shaders and runs them on the GPU from UdonSharp (LCGUdonSharp) via Blit + async GPU readback.",
+  "keywords": [
+    "wasm",
+    "webassembly",
+    "hlsl",
+    "shader",
+    "gpgpu",
+    "udonsharp",
+    "vrchat"
+  ],
+  "author": {
+    "name": "LogicCuteGuy"
+  },
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.5",
+    "com.logiccuteguy.lcgudonsharp": ">=0.3.10"
+  }
+}

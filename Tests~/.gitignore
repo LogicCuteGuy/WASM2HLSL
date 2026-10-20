@@ -1,0 +1,4 @@
+out/
+kernel/target/
+**/bin/
+**/obj/

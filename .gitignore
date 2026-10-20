@@ -1,0 +1,19 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]in/
+[Ll]ogs/
+UserSettings/
+*.csproj
+*.sln
+*.user
+.vs/
+.idea/
+# Build outputs
+target/
+Tests~/out/
+# OS
+.DS_Store
+Thumbs.db
+*.log

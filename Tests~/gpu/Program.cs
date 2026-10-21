@@ -1,5 +1,6 @@
 using System; using System.IO; using System.Runtime.InteropServices; using Vortice.Direct3D; using Vortice.Direct3D11; using Vortice.DXGI;
 // usage: gpu <cs.cso | cs.hlsl> <count> <mode> [hi] -> prints results as JSON array of lo (or lo,hi pairs with a 4th arg)
+// WASM_ROM=<file.rom> binds that file (from translate) as the RGBA8 texture _WasmRom at t0.
 // A .hlsl is compiled with the system d3dcompiler_47.dll (same compiler as fxc), entry "cs", cs_5_0.
 class P {
   [DllImport("d3dcompiler_47.dll", CharSet = CharSet.Ansi)]
@@ -24,6 +25,14 @@ class P {
   var uav = dev.CreateUnorderedAccessView(ob, new UnorderedAccessViewDescription(ob, Format.Unknown, 0, (uint)n));
   var cb = dev.CreateBuffer(new int[]{ n, mode, 0, 0 }, BindFlags.ConstantBuffer);
   var st = dev.CreateBuffer(new BufferDescription((uint)n*16, BindFlags.None, ResourceUsage.Staging, CpuAccessFlags.Read, ResourceOptionFlags.BufferStructured, 16));
+  var romPath = Environment.GetEnvironmentVariable("WASM_ROM");
+  if (!string.IsNullOrEmpty(romPath)) {
+    var rom = File.ReadAllBytes(romPath); uint rw = (uint)Math.Min(rom.Length / 4, 4096), rh = (uint)(rom.Length / 4 / rw);
+    fixed (byte* p = rom) {
+      var tex = dev.CreateTexture2D(new Texture2DDescription(Format.R8G8B8A8_UNorm, rw, rh, 1, 1, BindFlags.ShaderResource), new[] { new SubresourceData((IntPtr)p, rw * 4) });
+      ctx.CSSetShaderResource(0, dev.CreateShaderResourceView(tex));
+    }
+  }
   ctx.CSSetShader(cs); ctx.CSSetConstantBuffer(0, cb); ctx.CSSetUnorderedAccessView(0, uav);
   var sw = System.Diagnostics.Stopwatch.StartNew(); ctx.Dispatch((uint)(n+63)/64, 1, 1); ctx.CopyResource(st, ob);
   var map = ctx.Map(st, 0, MapMode.Read); Console.Error.WriteLine($"gpu {sw.Elapsed.TotalMilliseconds:F1} ms"); var r = new int[n*4]; Marshal.Copy(map.DataPointer, r, 0, n*4); ctx.Unmap(st, 0);

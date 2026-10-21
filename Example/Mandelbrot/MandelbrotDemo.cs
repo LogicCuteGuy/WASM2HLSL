@@ -82,8 +82,8 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
             Color32[] px = new Color32[w * h];
             for (int i = 0; i < px.Length; i++)
             {
-                byte v = (byte)(255 * runner.resultLo[i] / maxIter);
-                px[i] = new Color32(v, (byte)(v / 2), (byte)(255 - v), 255);
+                int c = runner.resultLo[i]; // packed RGBA from the 64 KB palette in mandelbrot.rs
+                px[i] = new Color32((byte)(c & 0xFF), (byte)((c >> 8) & 0xFF), (byte)((c >> 16) & 0xFF), 255);
             }
             _tex.SetPixels32(px);
             _tex.Apply(false);

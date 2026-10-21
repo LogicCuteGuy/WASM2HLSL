@@ -17,12 +17,13 @@ RWStructuredBuffer<int4> outb : register(u0);
 [numthreads(64, 1, 1)] void cs(uint3 t : SV_DispatchThreadID)
 { uint id = t.x; if (id >= (uint)_WasmWidth) return; uint r = $F; outb[id] = int4(asint(r), 0, (int)w_trap, 0); }
 HL
-"$FXC" //nologo //T cs_5_0 //E cs //Fo $OUT/cs.cso $OUT/cs.hlsl
+# No fxc.exe: gpu compiles the .hlsl itself with d3dcompiler_47.dll (same compiler).
+CS=$OUT/cs.hlsl; [ -x "$FXC" ] && "$FXC" //nologo //T cs_5_0 //E cs //Fo $OUT/cs.cso $OUT/cs.hlsl && CS=$OUT/cs.cso
 node ref.js $W 1024 $OUT/ref.json
 dotnet build -c Release -v q -nologo gpu
 fail=0
-for m in 0 1 2 3 4 5 6 7; do
-  dotnet gpu/bin/Release/net10.0/gpu.dll $OUT/cs.cso 1024 $m > $OUT/g$m.json 2>/dev/null
+for m in 0 1 2 3 4 5 6 7 8; do
+  WASM_ROM=$OUT/kernel.rom dotnet gpu/bin/Release/net10.0/gpu.dll $CS 1024 $m > $OUT/g$m.json 2>/dev/null
   # mode 4 uses the GPU's sin(): allow ±1
   node -e "const r=require('./$OUT/ref.json')[$m], g=require('./$OUT/g$m.json'); const tol=$m===4?1:0; let bad=0; for(let i=0;i<r.length;i++) if(Math.abs(r[i]-g[i])>tol) bad++; console.log('mode $m mismatches', bad); process.exit(bad?1:0)" || fail=1
 done

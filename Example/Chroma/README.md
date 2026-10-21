@@ -52,7 +52,8 @@ The panel is synced (Manual). Whoever moves a control takes ownership, and every
      filtering each source and summing, but `process` then runs on one row whatever the number of sources.
   4. Runs `process` for the new frames.
   5. Writes the result just ahead of the play head of a looping clip. The write-ahead tunes itself: it starts at
-     `minLead` (1536 frames, 32 ms). It grows by 512 when a block lands inside the mixer's last DSP buffer, and shrinks by 256
+     `minLead` (3072 frames, 64 ms). When a block lands inside the mixer's last DSP buffer it grows by 512; when a hitch let the
+     play head pass the write position it grows by that gap too, up to `maxLead` (16384 frames, 341 ms). It shrinks by 256
      after 5 s with every block on time.
 
   There are no per-sample Udon loops.
@@ -74,7 +75,10 @@ Bypass is the bit-exact dry signal, delayed by the filter delay. Feedback 0.5 ri
 **Limits**
 - **Latency:** buffering is about 50 to 80 ms on a desktop at 90 fps (the readout shows it), plus the filter delay.
   The filter delay is 43 ms (HQ) or 21 ms (LOW) for everything, bypass included. The video audio trails the picture by that much.
-  If the output crackles, raise `minLead` on the ChromaFx.
+  If the output crackles, raise `minLead` on the ChromaFx. Long hitches (avatars loading in a busy instance) raise the write-ahead
+  automatically, up to `maxLead`; after a hitch longer than about 85 ms (`MaxBlock`) the audio from that hitch is lost.
+- **Busy instances:** Unity plays at most 32 sounds at once and silences the lowest-priority, then quietest, sources first.
+  The inputs here play at -60 dB, so `ChromaFx` sets every input and the output to priority 0 (the highest) at Start.
 - **Low notes:** the window can't separate semitones below about 400 Hz (LOW: 800 Hz), so off-scale notes there pass unchanged.
 - **GPU cost:** about 0.7 ms per block (1.2 ms with the tail), measured with 800 frames on a desktop GPU, whatever the number of sources.
   Before the mixdown, 12 Juno voices cost 9 ms. Only the texture upload still grows with active inputs (up to `maxInputs` = 13).

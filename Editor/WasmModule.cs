@@ -42,6 +42,8 @@ namespace LogicCuteGuy.Wasm2Hlsl
     {
         public uint Offset;
         public byte[] Bytes;
+        public uint Index;  // segment index, counting passive ones
+        public string Name; // from the name section (".rodata", ".data"); null when stripped
     }
 
     /// <summary>Minimal WebAssembly MVP binary parser (plus bulk-memory/sign-ext/sat encodings).</summary>
@@ -60,6 +62,8 @@ namespace LogicCuteGuy.Wasm2Hlsl
         public uint MemoryPages;
         public bool HasMemory;
         public int ImportedFuncCount;
+        /// <summary>.rodata this big or bigger is read from the ROM texture instead of registers; 0 = never.</summary>
+        public uint MinRomBytes = 1024;
 
         public FuncType TypeOfFunc(uint funcIndex)
         {
@@ -194,15 +198,35 @@ namespace LogicCuteGuy.Wasm2Hlsl
                             if (flags == 1) { r.Slice((int)r.U32()); continue; } // passive: only reachable via memory.init
                             if (flags == 2) r.U32();
                             uint off = (uint)r.ConstExpr();
-                            m.Data.Add(new DataSegment { Offset = off, Bytes = r.Slice((int)r.U32()) });
+                            m.Data.Add(new DataSegment { Offset = off, Bytes = r.Slice((int)r.U32()), Index = i });
                         }
                         break;
-                    // 0 custom, 8 start, 12 datacount: ignored
+                    case 0:
+                        if (r.Name() == "name") ReadDataNames(r, end, m);
+                        break;
+                    // 8 start, 12 datacount: ignored
                 }
                 r.Pos = end;
             }
 
             return m;
+        }
+
+        /// <summary>Data segment names (name section, subsection 9): tells read-only .rodata apart from .data.</summary>
+        static void ReadDataNames(Reader r, int end, WasmModule m)
+        {
+            while (r.Pos < end)
+            {
+                byte sub = r.Byte();
+                int subEnd = (int)r.U32() + r.Pos;
+                if (sub == 9)
+                    for (uint n = r.U32(), i = 0; i < n; i++)
+                    {
+                        uint idx = r.U32(); string name = r.Name();
+                        foreach (var d in m.Data) if (d.Index == idx) d.Name = name;
+                    }
+                r.Pos = subEnd;
+            }
         }
 
         void AddTable(Reader r)

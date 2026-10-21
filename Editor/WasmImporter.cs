@@ -10,10 +10,11 @@ namespace LogicCuteGuy.Wasm2Hlsl
 {
     /// <summary>
     /// Imports a .wasm as one asset. Per exported function it contains, as sub-assets:
-    /// a Blit shader "WASM/Name/export", a material and an R32_SINT render texture (all named after the export).
+    /// a Blit shader "WASM/Name/export", a material and an R32_SINT render texture (all named after the export),
+    /// plus one "rom" texture holding the module's big .rodata (constant tables), already set on every material.
     /// No files are written next to the .wasm.
     /// </summary>
-    [ScriptedImporter(8, "wasm")]
+    [ScriptedImporter(9, "wasm")]
     public class WasmImporter : ScriptedImporter
     {
         [Tooltip("Calls per Run() = width x height, for functions whose source has no @size tag.")]
@@ -23,6 +24,9 @@ namespace LogicCuteGuy.Wasm2Hlsl
         public bool detectTraps;
         [Tooltip("Source file or folder (Rust, C/C++, Zig, AssemblyScript, TinyGo) to read argument names and docs from. Empty = the .wasm's folder and its src/.")]
         public string sourcePath = "";
+        [Tooltip("Constant data (.rodata: static/const tables) at least this big is read from a texture instead of GPU registers, " +
+                 "so it doesn't count toward the 64000-byte memory limit. 0 = keep everything in registers.")]
+        public int romMinBytes = 1024;
 
         const string LibMarker = "__WASM_LIBRARY__";
         const string IconPath = "Packages/com.logiccuteguy.wasm2hlsl/Editor/Icons/WasmIcon.png";
@@ -34,7 +38,17 @@ namespace LogicCuteGuy.Wasm2Hlsl
             try
             {
                 var module = WasmModule.Parse(File.ReadAllBytes(ctx.assetPath));
+                module.MinRomBytes = (uint)Mathf.Max(romMinBytes, 0);
                 string lib = WasmToHlsl.TranslateLibrary(module, name + ".wasm");
+                var romBytes = WasmToHlsl.RomBytes(module, out int romW, out int romH);
+                Texture2D rom = null;
+                if (romBytes != null)
+                {
+                    rom = new Texture2D(romW, romH, TextureFormat.RGBA32, false, true) { name = "rom", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+                    rom.LoadRawTextureData(romBytes);
+                    rom.Apply(false, false); // stays readable so the importer can serialize it
+                    ctx.AddObjectToAsset("rom", rom);
+                }
                 var names = SourceNames.Find(ctx.assetPath, sourcePath);
                 DependOnSources(ctx);
                 foreach (var export in module.FuncExports.Keys)
@@ -61,6 +75,7 @@ namespace LogicCuteGuy.Wasm2Hlsl
                     mat.SetInteger("_WasmPlaneRows", rows);
                     mat.SetInteger("_WasmHiPlane", hiPlane);
                     mat.SetInteger("_WasmTrapPlane", trapPlane);
+                    if (rom != null) mat.SetTexture("_WasmRom", rom);
                     ctx.AddObjectToAsset(export + ".mat", mat);
 
                     var rt = new RenderTexture(w, rows * planes, 0, GraphicsFormat.R32_SInt)
@@ -73,6 +88,7 @@ namespace LogicCuteGuy.Wasm2Hlsl
                 }
                 if (module.FuncExports.Count == 0) ctx.LogImportWarning($"{ctx.assetPath} exports no functions.");
                 summary.AppendLine($"GPU memory per call: {WasmToHlsl.MemoryBytes(module)} bytes");
+                if (rom != null) summary.AppendLine($"Constant data in the rom texture: {WasmToHlsl.RomByteCount(module)} bytes ({romW}x{romH})");
             }
             catch (Exception e)
             {
@@ -129,6 +145,8 @@ namespace LogicCuteGuy.Wasm2Hlsl
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(WasmImporter.width)));
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(WasmImporter.height)));
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(WasmImporter.detectTraps)), new GUIContent("Trap Check"));
+            WasmEditorLook.Section("Memory");
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(WasmImporter.romMinBytes)), new GUIContent("Texture Constants From (bytes)"));
             WasmEditorLook.Section("Source");
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(WasmImporter.sourcePath)));
             serializedObject.ApplyModifiedProperties();

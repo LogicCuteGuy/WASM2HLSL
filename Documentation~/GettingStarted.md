@@ -96,6 +96,7 @@ Anything that is the same small computation over many independent inputs fits: o
 
 ## Limits
 
-No recursion, memory <= 64000 bytes, `memory.grow` always fails, f64 is slow and compiles slowly,
+No recursion, writable memory <= 64000 bytes (constant `static` tables are read from a texture and don't count),
+`memory.grow` always fails, f64 is slow and compiles slowly,
 no threads/exceptions/GC. Pixels are independent; return values are the only output.
 See the package [README](../README.md) for the full table and test notes.

@@ -28,6 +28,7 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
         void Start()
         {
             runner.callbackTarget = this;
+            source.priority = 0; // over the voice limit (busy instances), Unity silences lower-priority sources first
             Apply();
         }
 

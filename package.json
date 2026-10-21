@@ -1,7 +1,7 @@
 {
   "name": "com.logiccuteguy.wasm2hlsl",
   "displayName": "WASM2HLSL for LCGUdonSharp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "unity": "2022.3",
   "license": "MIT",
   "description": "Converts WebAssembly modules into HLSL shaders and runs them on the GPU from UdonSharp (LCGUdonSharp) via Blit + async GPU readback.",

@@ -91,7 +91,11 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
             _startedAt = new float[n];
             _releasing = new bool[n];
             _held = new bool[n];
-            for (int v = 0; v < n; v++) _note[v] = -1;
+            for (int v = 0; v < n; v++)
+            {
+                _note[v] = -1;
+                voices[v].priority = loopVoices[v].priority = 0; // over the voice limit (busy instances), Unity silences lower-priority sources first
+            }
         }
 
         void Update()

@@ -27,7 +27,8 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
         private const int Taps = 4096, Coef = 2 * Taps, Win = 8192, Src = Coef + 2 * Win, MaxBlock = Win - Taps;
         // Output clip: ring of Ring frames; blocks land _lead frames ahead of the play head, followed by Clear frames of silence.
         // A block landing less than Guard frames ahead may already have been read by the mixer (one DSP buffer): it counts as late.
-        private const int Ring = 32768, Clear = 8192, Guard = 1024, MaxLead = 8192;
+        // Ring > 2 * (maxLead + MaxBlock + Clear) so "ahead" past Ring / 2 always means the play head overtook the write position.
+        private const int Ring = 131072, Clear = 16384, Guard = 1024;
         private const int Controls = 5; // color, key, scale, bypass, mode
         // Inputs play at -60 dB so they are inaudible except through here (VRChat replaces world mixer groups, and a muted
         // source gives GetOutputData only zeros); the mixdown scales them back up. Float samples lose nothing.
@@ -59,6 +60,9 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
         public Slider mode;
         [Tooltip("Smallest write-ahead in frames. Raise it if the output crackles on this machine.")]
         public int minLead = 3072;
+        [Tooltip("Largest write-ahead in frames (16384 = 341 ms at 48 kHz). The write-ahead grows up to this after hitches " +
+                 "(avatars loading in busy instances), trading latency for no dropouts.")]
+        public int maxLead = 16384;
         [Tooltip("Optional: shows key, scale, colour and latency.")]
         public Text readout;
 
@@ -85,6 +89,8 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
             foreach (AudioSource s in inputs)
             {
                 if (s == null) continue;
+                // Over the voice limit (busy instances) Unity silences the lowest priority, then the quietest: these play at -60 dB.
+                s.priority = 0;
                 s.spatialBlend = 0f; // 2D: distance must not lower the level we read (it would also push it under the cull limit)
                 JunoSynth juno = s.GetComponentInParent<JunoSynth>();
                 if (juno != null) juno.send = Send; // it rewrites its voice volumes every frame
@@ -115,6 +121,7 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
             _clip = AudioClip.Create("chroma", Ring, 2, _sr, false);
             output.clip = _clip;
             output.loop = true;
+            output.priority = 0;
 
             _lead = minLead;
             _last = new float[Controls];
@@ -212,9 +219,11 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
             int play = output.timeSamples;
             int ahead = (_write - play + Ring) % Ring;
             double now = AudioSettings.dspTime;
-            if (_write >= 0 && ahead < Guard) // too late: write further ahead from now on
+            if (_write >= 0 && (ahead < Guard || ahead > Ring / 2)) // too late: write further ahead from now on
             {
-                _lead = Mathf.Min(_lead + 512, MaxLead);
+                // A hitch lets the play head overtake the write position: grow by the frames it got ahead, not just one step.
+                int behind = ahead > Ring / 2 ? Ring - ahead : 0;
+                _lead = Mathf.Min(_lead + 512 + behind, Mathf.Min(maxLead, Ring / 2 - MaxBlock - Clear));
                 _lastLate = now;
                 _write = -1;
             }
@@ -224,7 +233,7 @@ namespace LogicCuteGuy.Wasm2Hlsl.Samples
                 _lastLate = now;
                 _write = (_write - 256 + Ring) % Ring;
             }
-            if (_write < 0 || ahead > Ring / 2) _write = (play + _lead) % Ring; // first block, late, or drifted: resync
+            if (_write < 0) _write = (play + _lead) % Ring; // first block or late: resync
             ahead = (_write - play + Ring) % Ring;
             float latency = (float)((now - _launchDsp) * 1000.0) + ahead * 1000f / _sr;
             if (Mathf.Abs(latency - _latencyMs) > 5f) { _latencyMs = latency; ShowReadout(); }

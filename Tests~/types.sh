@@ -26,7 +26,7 @@ RWStructuredBuffer<int4> outb : register(u0);
 [numthreads(64, 1, 1)] void cs(uint3 t : SV_DispatchThreadID)
 { uint id = t.x; if (id >= (uint)_WasmWidth) return; uint2 r = $F; outb[id] = int4(asint(r.x), asint(r.y), (int)w_trap, 0); }
 HL
-    dotnet gpu/bin/Release/net10.0/gpu.dll $OUT/cs_${B}_$E.hlsl $N 0 hi > $OUT/g_$E.json 2> $OUT/g_$E.log || { echo "$B.$E GPU run failed"; fail=1; continue; }
+    WASM_ROM=$([ -f $OUT/$B.rom ] && echo $OUT/$B.rom) dotnet gpu/bin/Release/net10.0/gpu.dll $OUT/cs_${B}_$E.hlsl $N 0 hi > $OUT/g_$E.json 2> $OUT/g_$E.log || { echo "$B.$E GPU run failed"; fail=1; continue; }
     grep -E "compiled|gpu " $OUT/g_$E.log
     node -e "
       const fs=require('fs'); const mod=new WebAssembly.Module(fs.readFileSync('$W'));

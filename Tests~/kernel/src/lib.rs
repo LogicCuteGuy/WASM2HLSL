@@ -6,6 +6,32 @@ fn panic(_: &core::panic::PanicInfo) -> ! { loop {} }
 extern "C" { fn hlsl_sin(x: f32) -> f32; fn input(i: i32) -> i32; }
 static PRIMES: [u32; 8] = [2, 3, 5, 7, 11, 13, 17, 19];
 
+// 96 KB of .rodata: over the 64000-byte register limit, so it must be read from the ROM texture.
+const ROM_N: usize = 24576;
+const fn make_table() -> [u32; ROM_N] {
+    let mut t = [0u32; ROM_N];
+    let (mut i, mut s) = (0, 0x12345678u32);
+    while i < ROM_N { s ^= s << 13; s ^= s >> 17; s ^= s << 5; t[i] = s; i += 1; }
+    t
+}
+static TABLE: [u32; ROM_N] = make_table();
+
+/// Word, byte and unaligned reads from ROM, plus a ROM -> stack copy that is then written.
+#[inline(never)]
+fn rom_mix(x: u32) -> u32 {
+    let i = (x.wrapping_mul(2654435761) >> 8) as usize % (ROM_N - 8);
+    let bytes = unsafe { core::slice::from_raw_parts(TABLE.as_ptr() as *const u8, ROM_N * 4) };
+    let b = bytes[(x as usize * 7) % (ROM_N * 4)] as u32;
+    let o = (x as usize * 13 + 1) % (ROM_N * 4 - 4);
+    let u = u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
+    let mut c = [0u32; 8];
+    c.copy_from_slice(&TABLE[i..i + 8]);
+    c[x as usize % 8] ^= x;
+    let mut acc = 0u32;
+    for v in c { acc = acc.wrapping_mul(31).wrapping_add(v); }
+    TABLE[i] ^ b ^ u.rotate_left(3) ^ acc
+}
+
 #[inline(never)]
 fn collatz(mut n: u32) -> u32 {
     let mut steps = 0;
@@ -58,6 +84,7 @@ pub extern "C" fn main(id: i32, mode: i32) -> i32 {
         4 => { let f = (x as f32) * 0.37 + 0.5; (unsafe { hlsl_sin(f) } * 1000.0 + f * 3.0) as i32 + PRIMES[(x % 8) as usize] as i32 }
         5 => { let a = (x as u64) << 33 | 12345; let b = (x as u64 % 97) + 3; ((a / b) as u32 ^ (a % b) as u32) as i32 }
         6 => { let v = (x as i64 - 500) * 123456789; (v >> 7) as i32 ^ ((v as f64) as f32 as i32 >> 3) }
-        _ => (x as i32).wrapping_neg() ^ unsafe { input(id) },
+        7 => (x as i32).wrapping_neg() ^ unsafe { input(id) },
+        _ => rom_mix(x) as i32,
     }
 }

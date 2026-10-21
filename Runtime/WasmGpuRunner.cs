@@ -184,6 +184,8 @@ namespace LogicCuteGuy.Wasm2Hlsl
         public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
         {
             busy = false;
+            // The client flushes in-flight readbacks while tearing the world down (leaving, quitting): the material is already gone.
+            if (!Utilities.IsValid(wasmMaterial) || !Utilities.IsValid(target)) return;
             if (request.hasError) { Debug.LogError("[WASM2HLSL] GPU readback failed.", this); return; }
 
             // R32 target: rows [0, n) hold lo; hi and trap (if any) follow as extra planes of n values each.
@@ -200,7 +202,7 @@ namespace LogicCuteGuy.Wasm2Hlsl
                 if (trapPlane > 0)
                     for (int i = 0; i < n; i++)
                         if (resultFloat[trapPlane * n + i] != 0f) { trapped = true; break; }
-                if (callbackTarget != null) callbackTarget.SendCustomEvent(callbackEvent);
+                if (Utilities.IsValid(callbackTarget)) callbackTarget.SendCustomEvent(callbackEvent);
                 return;
             }
             if (_bytes == null || _bytes.Length != size) _bytes = new byte[size];
@@ -215,7 +217,7 @@ namespace LogicCuteGuy.Wasm2Hlsl
                 for (int i = 0; i < n; i++)
                     if (ReadInt((trapPlane * n + i) * 4) != 0) { trapped = true; break; }
 
-            if (callbackTarget != null) callbackTarget.SendCustomEvent(callbackEvent);
+            if (Utilities.IsValid(callbackTarget)) callbackTarget.SendCustomEvent(callbackEvent);
         }
 
         /// <summary>Result i reinterpreted as f32 (for exports returning f32).</summary>

@@ -9,7 +9,7 @@ Use it for heavy loops (DSP, fractals, filters) that are far too slow in Udon.
 ## 1. Install
 
 Add the package through VPM or copy `com.logiccuteguy.wasm2hlsl` into `Packages/`.
-Requires VRChat Worlds SDK 3.10.5 and `com.logiccuteguy.lcgudonsharp` >= 0.3.10.
+Requires VRChat Worlds SDK 3.10.5 (it includes UdonSharp).
 
 ![Package in the Project window: Editor, Example, Runtime](images/package-in-project.png)
 

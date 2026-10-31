@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - 2026-10-31
+
+### Changed
+- Works with the UdonSharp included in the VRChat Worlds SDK; LCGUdonSharp is no longer required.
+- Renamed the package display name to **WASM2HLSL for UdonSharp**.
+
 ## 0.2.0 - 2026-10-22
 
 ### Added

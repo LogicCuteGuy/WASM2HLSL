@@ -1,4 +1,4 @@
-# WASM2HLSL for LCGUdonSharp
+# WASM2HLSL for UdonSharp
 
 Run WebAssembly on the GPU in a VRChat world. Drop a `.wasm` file into the project and the editor
 translates it to HLSL; an UdonSharp `WasmGpuRunner` then executes the exported function **once per pixel**
@@ -10,7 +10,7 @@ See [Documentation~/GettingStarted.md](Documentation~/GettingStarted.md) for a s
 
 ## Install
 
-VRChat Worlds SDK 3.10.5 and `com.logiccuteguy.lcgudonsharp` >= 0.3.10 are required. Add this repository as a package
+VRChat Worlds SDK 3.10.5 is required (it includes UdonSharp). Add this repository as a package
 (Unity Package Manager > Add package from git URL, or clone it into `Packages/`).
 
 Udon is slow (roughly 1000× slower than C#). A pixel shader running the same logic over thousands
